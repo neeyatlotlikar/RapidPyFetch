@@ -1,0 +1,9 @@
+{
+  "name": "com.neeyatlotlikar.downloader",
+  "description": "Native host for Smart Download Manager",
+  "path": "/home/autumn/Documents/Projects/RapidPyFetch/native_app/downloader.py",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://YOUR_EXTENSION_ID/"
+  ]
+}

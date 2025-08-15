@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "Smart Download Manager",
+    "version": "0.1",
+    "permissions": [
+        "downloads",
+        "storage",
+        "notifications",
+        "nativeMessaging"
+    ],
+    "background": {
+        "service_worker": "background/sw.js"
+    },
+    "action": {
+        "default_popup": "popup/popup.html"
+    },
+    "icons": {
+        "128": "assets/icon128.png"
+    }
+}
