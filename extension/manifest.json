@@ -4,8 +4,6 @@
     "version": "0.1",
     "permissions": [
         "downloads",
-        "storage",
-        "notifications",
         "nativeMessaging"
     ],
     "background": {
