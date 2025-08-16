@@ -6,8 +6,9 @@ chrome.downloads.onCreated.addListener((delta) => {
 
         const port = chrome.runtime.connectNative('com.neeyatlotlikar.downloader');
         port.postMessage({
-            url: delta.finalUrl || delta.url,
-            filename: delta.filename || undefined
+            "command": "add",
+            "url": delta.finalUrl || delta.url,
+            "filename": delta.filename || undefined
         });
         console.log("Sent to native app");
     }
