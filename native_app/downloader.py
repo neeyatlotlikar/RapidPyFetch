@@ -1,61 +1,32 @@
 #!/home/autumn/Documents/Projects/RapidPyFetch/.venv/bin/python3
 import logging
 import os
-import socket
 import subprocess
 import time
 from threading import Thread
 
 import aria2p
 import dotenv
-from nativemessenger import get_message
-
-# Setup logging
-logging.basicConfig(
-    filename="/home/autumn/Documents/Projects/RapidPyFetch/native_app/download.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
+from utils import get_message, log_fun_call, wait_for_aria2_rpc
 
 dotenv.load_dotenv()
 
 ARIA2_RPC_SECRET = os.getenv("ARIA2_RPC_SECRET", "")
 DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH", os.path.expanduser("~/Downloads"))
 RPC_LISTEN_PORT = int(os.getenv("RPC_LISTEN_PORT", 6800))
+LOG_PATH = os.getenv("LOG_PATH", os.path.expanduser("~/Downloads/downloader.log"))
+
+# Setup logging
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+
+logging.basicConfig(
+    filename=LOG_PATH,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 # Track active monitoring threads by GID
 monitor_threads = {}
-
-
-# Decorator for adding a logger to functions
-def log_fun_call(func):
-    def wrapper(*args, **kwargs):
-        logging.info(
-            f"Calling function: {func.__name__} | Args: {args} | Kwargs: {kwargs}"
-        )
-        try:
-            result = func(*args, **kwargs)
-            logging.info(f"Function completed: {func.__name__} | Result: {result}")
-            return result
-        except Exception as e:
-            logging.error(
-                f"Function errored out: {func.__name__} | Error: {e}", exc_info=True
-            )
-            return None
-
-    return wrapper
-
-
-@log_fun_call
-def wait_for_aria2_rpc(host="localhost", port=6800, timeout=10):
-    start = time.monotonic()
-    while (time.monotonic() - start) < timeout:
-        try:
-            with socket.create_connection((host, port), timeout=1):
-                return True
-        except OSError:
-            time.sleep(0.5)
-    return False
 
 
 def send_status_update(download):
@@ -223,6 +194,8 @@ def main():
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
     try:
+        logging.info(f"Started aria2c with PID {aria2_proc.pid}")
+
         if not wait_for_aria2_rpc(port=RPC_LISTEN_PORT, timeout=20):
             logging.error(
                 f"Aria2 did not start in time. {aria2_proc.stderr=} {aria2_proc.stdout=}"
@@ -236,6 +209,7 @@ def main():
                 secret=ARIA2_RPC_SECRET,
             )
         )
+        # Start the message loop
         while True:
             try:
                 msg = get_message()
