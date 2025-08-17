@@ -12,9 +12,14 @@ from utils import get_message, log_fun_call, wait_for_aria2_rpc, wait_for_networ
 dotenv.load_dotenv()
 
 ARIA2_RPC_SECRET = os.getenv("ARIA2_RPC_SECRET", "")
-DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH", os.path.expanduser("~/Downloads"))
+DOWNLOAD_PATH = os.path.expanduser(os.getenv("DOWNLOAD_PATH", "~/Downloads"))
 RPC_LISTEN_PORT = int(os.getenv("RPC_LISTEN_PORT", 6800))
-LOG_PATH = os.getenv("LOG_PATH", os.path.expanduser("~/Downloads/downloader.log"))
+LOG_PATH = os.path.expanduser(os.getenv("LOG_PATH", "~/Downloads/downloader.log"))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
+WAIT_SECS = int(os.getenv("WAIT_SECS", 5))
+ARIA2_RPC_CONN_TIMEOUT = int(os.getenv("ARIA2_RPC_CONN_TIMEOUT", 10))
+ARIA2_RPC_HOSTNAME = os.getenv("ARIA2_RPC_HOSTNAME", "http://localhost")
+
 
 # Setup logging
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
@@ -133,7 +138,9 @@ class DownloadManager:
             logging.warning(f"Download Not found {gid=}", exc_info=True)
 
     @log_fun_call
-    def retry_download(self, download: aria2p.Download, max_retries=3, wait_seconds=5):
+    def retry_download(
+        self, download: aria2p.Download, max_retries=MAX_RETRIES, wait_seconds=WAIT_SECS
+    ):
         """
         Automatically retries a failed download using aria2p.
 
@@ -303,7 +310,7 @@ class DownloadManager:
 
 
 @log_fun_call
-def process_command(mgr: DownloadManager, msg):
+def process_command(mgr: DownloadManager, msg: dict):
     """
     Process a command received from the extension and perform the corresponding action on the download.
 
@@ -399,7 +406,7 @@ def main():
     try:
         logging.info(f"Started aria2c with PID {aria2_proc.pid}")
 
-        if not wait_for_aria2_rpc(port=RPC_LISTEN_PORT, timeout=20):
+        if not wait_for_aria2_rpc(port=RPC_LISTEN_PORT, timeout=ARIA2_RPC_CONN_TIMEOUT):
             logging.error(
                 "Aria2 did not start in time. "
                 f"{aria2_proc.stderr=} {aria2_proc.stdout=}"
@@ -409,7 +416,7 @@ def main():
         # Connect to the running aria2 RPC server
         aria2 = aria2p.API(
             aria2p.Client(
-                host="http://localhost",
+                host=ARIA2_RPC_HOSTNAME,
                 port=RPC_LISTEN_PORT,
                 secret=ARIA2_RPC_SECRET,
             )
