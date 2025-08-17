@@ -4,7 +4,11 @@
     "version": "0.1",
     "permissions": [
         "downloads",
-        "nativeMessaging"
+        "nativeMessaging",
+        "downloads.shelf"
+    ],
+    "optional_permissions": [
+        "downloads.open"
     ],
     "background": {
         "service_worker": "background/sw.js"
