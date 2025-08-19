@@ -1,0 +1,23 @@
+# /etc/systemd/system/aria2c.service
+[Unit]
+Description=Aria2c Download Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/aria2c \
+  --enable-rpc \
+  --rpc-listen-port=6800 \
+  --rpc-secret=YOUR_SECRET_HERE \
+  --rpc-allow-origin-all=false \
+  --rpc-listen-all=false \
+  --dir=/path/to/downloads \
+  --continue=true \
+  --max-concurrent-downloads=10 \
+  --max-connection-per-server=5 \
+  --rpc-save-upload-metadata=true
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,7 @@
+# Project Specific
+start_aria2c.private.sh
+aria2c.private.service
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

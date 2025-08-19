@@ -1,13 +1,17 @@
 #!/home/autumn/Documents/Projects/RapidPyFetch/.venv/bin/python3
 import logging
 import os
-import subprocess
 import time
 from threading import Thread
 
 import aria2p
 import dotenv
-from utils import get_message, log_fun_call, wait_for_aria2_rpc, wait_for_network_probe
+from utils import (
+    get_message,
+    send_message,
+    log_fun_call,
+    wait_for_network_probe,
+)
 
 dotenv.load_dotenv()
 
@@ -41,19 +45,19 @@ class DownloadManager:
 
         Initializes the following instance variables:
             - api: The aria2p API.
-            - monitor_threads: A dictionary to keep track of download monitor threads.
-            - download_url: A dictionary mapping download GIDs to their URLs.
-            - retry_count: A dictionary mapping download URLs to their retry counts.
+            - monitor_thread: A thread to monitor the download progress.
+            - download_url: A string to keep track of the download URL.
+            - retry_count: An integer to keep track of the number of retries.
         """
         self.api = api
-        self.monitor_threads = {}
-        self.download_url = {}
-        self.retry_count = {}
+        self.monitor_thread = None
+        self.download_url = ""
+        self.retry_count = 0
 
     def __repr__(self):
         return (
             f"DownloadManager(api={self.api}, "
-            f"monitor_threads={self.monitor_threads}, "
+            f"monitor_thread={self.monitor_thread}, "
             f"download_url={self.download_url}, "
             f"retry_count={self.retry_count})"
         )
@@ -75,7 +79,7 @@ class DownloadManager:
         """
         download: aria2p.Download = self.api.add_uris([url], options={"out": filename})
         self.start_monitor_thread(download.gid)
-        self.download_url[download.gid] = url
+        self.download_url = url
         return download
 
     @log_fun_call
@@ -87,14 +91,14 @@ class DownloadManager:
             gid (str): The GID of the download to pause.
 
         This function retrieves the download with the given GID and pauses it using the aria2p API.
-        If the download is not found, a warning is logged.
+        If the download is not found, an error is logged.
         """
         download = self.api.get_download(gid)
         if download:
             download.pause()
             logging.info(f"Paused download {gid=}")
         else:
-            logging.warning(f"Download Not found {gid=}", exc_info=True)
+            logging.error(f"Download Not found {gid=}", exc_info=True)
 
     @log_fun_call
     def resume_download(self, gid):
@@ -105,14 +109,14 @@ class DownloadManager:
             gid (str): The GID of the download to resume.
 
         This function retrieves the download with the given GID and resumes it using the aria2p API.
-        If the download is not found, a warning is logged.
+        If the download is not found, an error is logged.
         """
         download = self.api.get_download(gid)
         if download:
             download.resume()
             logging.info(f"Resumed download {gid=}")
         else:
-            logging.warning(f"Download Not found {gid=}", exc_info=True)
+            logging.error(f"Download Not found {gid=}", exc_info=True)
 
     @log_fun_call
     def remove_download(self, gid, options={}):
@@ -149,20 +153,13 @@ class DownloadManager:
         - max_retries: Maximum number of retry attempts.
         - wait_seconds: Seconds to wait between retries.
         """
-        url = self.download_url.get(download.gid)
-        if not url:
-            logging.error(
-                f"auto_retry_failed_download | Download {download.gid} has no associated URI. Cannot retry."
-            )
-            return False
 
-        while self.retry_count.get(url, 0) < max_retries:
+        while self.retry_count < max_retries:
             # Check current download status
             download = self.api.get_download(download.gid)
             if download.status != "error":
                 logging.info(
-                    f"auto_retry_failed_download | Download {download.gid} status is '{download.status}'"
-                    ", no retry needed."
+                    f"Download {download.gid} status is '{download.status}', no retry needed."
                 )
                 return True
 
@@ -170,7 +167,7 @@ class DownloadManager:
 
             logging.warning(
                 f"Download {download.gid} failed (error). "
-                f"Attempting retry {self.retry_count.get(url, 0) + 1} of {max_retries}."
+                f"Attempting retry {self.retry_count + 1} of {max_retries}."
             )
 
             try:
@@ -184,7 +181,7 @@ class DownloadManager:
                 logging.info(f"Stopped monitoring download {download.gid=}")
 
                 # Re-add the same URI with original output name
-                new_download = self.add_download(url, download.name)
+                new_download = self.add_download(self.download_url, download.name)
                 logging.info(f"Re-added download as new GID: {new_download.gid}")
 
                 # Wait before next status check
@@ -201,34 +198,11 @@ class DownloadManager:
                     f"Error while retrying download {download.gid}: {e}", exc_info=1
                 )
 
-            self.retry_count[url] = self.retry_count.get(url, 0) + 1
+            self.retry_count += 1
             time.sleep(wait_seconds)
 
         logging.error(f"All retry attempts exhausted for download {download.gid}.")
         return False
-
-    @log_fun_call
-    def cleanup_download(self, gid):
-        """
-        Clean up resources for a completed or removed download.
-
-        Args:
-            gid (str): The GID of the download.
-
-        This function stops monitoring the download, removes the download URL mapping,
-        clears retry counts, and logs the cleanup actions.
-        """
-        mt = self.monitor_threads.pop(gid, None)
-        logging.info(f"Stopped monitoring download {mt=}")
-
-        url = self.download_url.pop(gid, None)
-        if not url:
-            logging.warning(f"Download {gid} has no associated URI.", exc_info=1)
-        else:
-            retries = self.retry_count.pop(url, None)
-            logging.info(f"Clear existing retry count {gid=} {url=} {retries=}")
-
-        logging.info(f"Cleaned up resources for download {gid}")
 
     @log_fun_call
     def start_monitor_thread(self, gid):
@@ -238,26 +212,22 @@ class DownloadManager:
         Args:
             gid (str): The GID of the download to monitor.
 
-        This function checks if the download is already being monitored and returns without
-        starting a new thread if it is. Otherwise, it creates a new thread and starts it.
+        This function creates a new thread and starts it.
         The new thread calls the `monitor_download` function to continuously monitor the
         download status until it is complete or removed.
 
         Returns:
             None
         """
-        if gid not in self.monitor_threads:
-            thread = Thread(
-                target=self.monitor_download,
-                name=f"monitor-{gid}",
-                args=(gid,),
-                daemon=True,
-            )
-            thread.start()
-            self.monitor_threads[gid] = thread
-            logging.info(f"Started monitoring {gid=}")
-        else:
-            logging.info(f"Already monitoring {gid=}")
+        thread = Thread(
+            target=self.monitor_download,
+            name=f"monitor-{gid}",
+            args=(gid,),
+            daemon=True,
+        )
+        thread.start()
+        self.monitor_thread = thread
+        logging.info(f"Started monitoring {thread=}")
 
     @log_fun_call
     def monitor_download(self, gid):
@@ -280,7 +250,6 @@ class DownloadManager:
                 break
             # Stop monitoring if the download is complete
             if download.is_complete:
-                self.cleanup_download(gid)
                 break
             if download.status == "error":
                 logging.warning(
@@ -336,6 +305,9 @@ def process_command(mgr: DownloadManager, msg: dict):
                 return
 
             mgr.add_download(url, filename)
+            send_message(
+                {"status": "success", "message": "Download added successfully"}
+            )
 
         case "pause":
             if not gid:
@@ -357,7 +329,6 @@ def process_command(mgr: DownloadManager, msg: dict):
                 return
 
             mgr.remove_download(gid)
-            mgr.cleanup_download(gid)
 
         case "list":
             downloads = mgr.api.get_downloads()
@@ -378,70 +349,18 @@ def process_command(mgr: DownloadManager, msg: dict):
             logging.error(f"Unknown command {cmd=} {msg=}", exc_info=True)
 
 
-@log_fun_call
-def main():
-    """
-    The main function that runs the aria2 RPC server and handles browser
-    messages.
-
-    Starts the aria2 RPC server, connects to it, and enters a message loop
-    where it waits for messages from the browser extension. For each message,
-    it processes the command and updates the aria2 RPC server accordingly.
-
-    The function terminates the aria2 RPC server when it finishes.
-    """
-    cmd = [
-        "aria2c",
-        "--enable-rpc",
-        "--rpc-listen-port=" + str(RPC_LISTEN_PORT),
-        "--rpc-secret=" + ARIA2_RPC_SECRET,
-        "--rpc-allow-origin-all=false",
-        "--rpc-listen-all=false",  # Listen on localhost by default
-        "--dir=" + DOWNLOAD_PATH,
-    ]
-
-    aria2_proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-    )
-    try:
-        logging.info(f"Started aria2c with PID {aria2_proc.pid}")
-
-        if not wait_for_aria2_rpc(port=RPC_LISTEN_PORT, timeout=ARIA2_RPC_CONN_TIMEOUT):
-            logging.error(
-                "Aria2 did not start in time. "
-                f"{aria2_proc.stderr=} {aria2_proc.stdout=}"
-            )
-            return
-
-        # Connect to the running aria2 RPC server
-        aria2 = aria2p.API(
-            aria2p.Client(
-                host=ARIA2_RPC_HOSTNAME,
-                port=RPC_LISTEN_PORT,
-                secret=ARIA2_RPC_SECRET,
-            )
-        )
-
-        dwnld_mgr = DownloadManager(aria2)
-
-        # Start the message loop
-        while True:
-            try:
-                msg = get_message()
-            except EOFError:
-                logging.info("Browser disconnected, exiting helper.")
-                break
-            except Exception as e:
-                logging.error(
-                    f"process_command | {msg=}: Failed to get message: {e}",
-                    exc_info=True,
-                )
-                continue
-
-            process_command(dwnld_mgr, msg)
-    finally:
-        aria2_proc.terminate()
-
-
 if __name__ == "__main__":
-    main()
+    # Connect to the running aria2 RPC server
+    aria2 = aria2p.API(
+        aria2p.Client(
+            host=ARIA2_RPC_HOSTNAME,
+            port=RPC_LISTEN_PORT,
+            secret=ARIA2_RPC_SECRET,
+        )
+    )
+
+    dwnld_mgr = DownloadManager(aria2)
+    msg = get_message()
+
+    # Process the command received from the extension
+    process_command(dwnld_mgr, msg)

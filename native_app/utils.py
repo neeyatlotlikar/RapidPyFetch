@@ -38,6 +38,7 @@ def log_fun_call(func):
     return wrapper
 
 
+@log_fun_call
 def get_message():
     """Native messaging protocol: receive a message from Chromium."""
     raw_length = sys.stdin.buffer.read(4)
@@ -48,6 +49,7 @@ def get_message():
     return json.loads(message)
 
 
+@log_fun_call
 def send_message(message):
     """Native messaging protocol: send a message to Chromium."""
     encoded = json.dumps(message).encode("utf-8")
@@ -57,28 +59,6 @@ def send_message(message):
 
 
 @log_fun_call
-def wait_for_aria2_rpc(host="localhost", port=6800, timeout=10):
-    """
-    Wait for the aria2 RPC server to be available on the specified host and port.
-
-    Args:
-        host (str): Host to probe (default: localhost).
-        port (int): Port to probe (default: 6800).
-        timeout (int): Seconds to wait before giving up (default: 10).
-
-    Returns:
-        bool: True if the RPC server is available, False if timed out.
-    """
-    start = time.monotonic()
-    while (time.monotonic() - start) < timeout:
-        try:
-            with socket.create_connection((host, port), timeout=1):
-                return True
-        except OSError:
-            time.sleep(0.5)
-    return False
-
-
 def is_network_reachable(host="8.8.8.8", port=53, timeout=3):
     """
     Checks if the network is reachable by establishing a TCP connection to a known reliable host.
@@ -100,6 +80,7 @@ def is_network_reachable(host="8.8.8.8", port=53, timeout=3):
         return False
 
 
+@log_fun_call
 def wait_for_network_probe(
     host="8.8.8.8",
     port=53,

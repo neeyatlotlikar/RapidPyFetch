@@ -1,3 +1,26 @@
+function sendDownloadToNative(url, filename) {
+    chrome.runtime.sendNativeMessage(
+        'com.neeyatlotlikar.downloader',
+        {
+            command: 'add',
+            url: url,
+            filename: filename
+        },
+        (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Native message error:', chrome.runtime.lastError.message);
+                return;
+            }
+            console.log('Response from native:', response);
+            if (response.status === 'success') {
+                console.log('Download initiated successfully.');
+            } else {
+                console.error('Failed to initiate download:', response.error);
+            }
+        }
+    );
+}
+
 chrome.downloads.onCreated.addListener((delta) => {
     console.log("Download created:", delta);
     if (delta && delta.id && delta.url) {
@@ -9,12 +32,7 @@ chrome.downloads.onCreated.addListener((delta) => {
                 console.log("Chrome download canceled.");
 
                 // Start native download only after cancel completes
-                const port = chrome.runtime.connectNative('com.neeyatlotlikar.downloader');
-                port.postMessage({
-                    "command": "add",
-                    "url": delta.finalUrl || delta.url,
-                    "filename": delta.filename || undefined
-                });
+                sendDownloadToNative(delta.finalUrl || delta.url, delta.filename);
                 console.log("Sent to native app");
             }
         });
