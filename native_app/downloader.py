@@ -290,6 +290,39 @@ def process_command(mgr: DownloadManager, msg: dict):
     This function processes the command received from the extension and performs the corresponding action on the download.
     The supported commands are "add", "pause", "resume", "remove", and "list".
 
+    JSON message format:
+
+    1. Add a new download
+    {
+        "command": "add",
+        "url": "http://example.com/file.zip",
+        "filename": "file.zip"
+    }
+
+    2. Pause a download
+    {
+        "command": "pause",
+        "gid": "TheGIDofDownload"
+    }
+
+    3. Resume a download
+    {
+        "command": "resume",
+        "gid": "TheGIDofDownload"
+    }
+
+    4. Remove a download
+    {
+        "command": "remove",
+        "gid": "TheGIDofDownload"
+    }
+
+    5. List all downloads
+    {
+        "command": "list"
+    }
+
+
     Returns:
         None
     """

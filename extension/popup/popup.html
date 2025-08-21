@@ -1,37 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>Smart Download Manager</title>
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+    <title>RapidPyFetch</title>
+
     <style>
-        body {
-            background: #181818;
-            color: #f6f6f6;
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            margin: 0;
-            padding: 20px;
-            width: 275px;
+        .popup-container {
+            font-size: 1.3em;
+            background: #fff8fc;
+            border-radius: 12px;
+            box-sizing: border-box;
+            box-shadow: 0 2px 16px #ffb6d5;
+            padding: 24px;
+            max-width: 500px;
+            font-family: 'Nunito', 'Segoe UI', 'Arial', sans-serif;
+            text-align: center;
+            width: 100%;
+            margin: 0 auto;
+            overflow-wrap: break-word;
+            overflow-x: auto;
         }
 
-        h1 {
-            font-size: 1.2em;
-            color: #b491ff;
-            margin-bottom: 0.5em;
+        .title {
+            color: #e75480;
+            font-family: 'Mochiy Pop P One', cursive;
+            margin-bottom: 8px;
         }
 
-        p {
-            color: #bbbbbb;
-            margin-bottom: 0;
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 16px 0 0 0;
+        }
+
+        li {
+            margin: 6px 0;
+        }
+
+        .copy {
+            display: block;
+            margin-top: 18px;
+            color: #b6a4bc;
         }
     </style>
 </head>
 
-<body>
-    <h1>RapidPyFetch</h1>
-    <p>Manage your downloads efficiently with RapidPyFetch — your smart download manager.</p>
-    <!-- TODO: Implement UI for managing downloads -->
-    <script src="popup.js"></script>
+<!-- Specified body and div.popup-container width explicitly for the popup to render with full width -->
+
+<body style="width: 500px;">
+    <div class="popup-container" style="width: 500px;">
+        <h1 class="title">🌸 RapidPyFetch 🌸</h1>
+        <p>
+            RapidPyFetch makes your downloads faster, more reliable, and easier to manage.
+            Made by an anime lover to help you download your favorite media without hassle.
+            Quicker, cuter, smarter downloads, one click at a time.
+            <br>
+            <b>Enhance your browser's downloading power!</b>
+        </p>
+        <ul>
+            <li>🚫 Prevents failed or incomplete downloads in your browser</li>
+            <li>⚡ Offloads downloading to a powerful Python helper ⏬</li>
+            <li>📁 Ideal for large files, batches, and media collections 🎶</li>
+            <li>🔒 Keeps your downloads organized and consistent</li>
+            <li>🌟 Light, playful, and full of energy! 💫</li>
+        </ul>
+        <footer>
+            <span class="copy">Made with ☕ and 🍜 by RapidPyFetch<br>Powered by Python & aria2c</span>
+        </footer>
+    </div>
 </body>
 
 </html>
