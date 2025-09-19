@@ -6,4 +6,7 @@ aria2c \
   --rpc-allow-origin-all=false \
   --rpc-listen-all=false \
   --dir="/path/to/downloads" \
-  --continue=true
+  --max-tries=20 \
+  --retry-wait=5 \
+  --continue=true \
+  -D

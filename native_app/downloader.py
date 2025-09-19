@@ -10,18 +10,13 @@ from utils import (
     get_message,
     send_message,
     log_fun_call,
-    wait_for_network_probe,
 )
 
 dotenv.load_dotenv()
 
 ARIA2_RPC_SECRET = os.getenv("ARIA2_RPC_SECRET", "")
-DOWNLOAD_PATH = os.path.expanduser(os.getenv("DOWNLOAD_PATH", "~/Downloads"))
 RPC_LISTEN_PORT = int(os.getenv("RPC_LISTEN_PORT", 6800))
 LOG_PATH = os.path.expanduser(os.getenv("LOG_PATH", "~/Downloads/downloader.log"))
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
-WAIT_SECS = int(os.getenv("WAIT_SECS", 5))
-ARIA2_RPC_CONN_TIMEOUT = int(os.getenv("ARIA2_RPC_CONN_TIMEOUT", 10))
 ARIA2_RPC_HOSTNAME = os.getenv("ARIA2_RPC_HOSTNAME", "http://localhost")
 
 
@@ -47,19 +42,16 @@ class DownloadManager:
             - api: The aria2p API.
             - monitor_thread: A thread to monitor the download progress.
             - download_url: A string to keep track of the download URL.
-            - retry_count: An integer to keep track of the number of retries.
         """
         self.api = api
         self.monitor_thread = None
         self.download_url = ""
-        self.retry_count = 0
 
     def __repr__(self):
         return (
             f"DownloadManager(api={self.api}, "
             f"monitor_thread={self.monitor_thread}, "
             f"download_url={self.download_url}, "
-            f"retry_count={self.retry_count})"
         )
 
     @log_fun_call
@@ -142,69 +134,6 @@ class DownloadManager:
             logging.warning(f"Download Not found {gid=}", exc_info=True)
 
     @log_fun_call
-    def retry_download(
-        self, download: aria2p.Download, max_retries=MAX_RETRIES, wait_seconds=WAIT_SECS
-    ):
-        """
-        Automatically retries a failed download using aria2p.
-
-        Arguments:
-        - download: aria2p Download object.
-        - max_retries: Maximum number of retry attempts.
-        - wait_seconds: Seconds to wait between retries.
-        """
-
-        while self.retry_count < max_retries:
-            # Check current download status
-            download = self.api.get_download(download.gid)
-            if download.status != "error":
-                logging.info(
-                    f"Download {download.gid} status is '{download.status}', no retry needed."
-                )
-                return True
-
-            wait_for_network_probe()
-
-            logging.warning(
-                f"Download {download.gid} failed (error). "
-                f"Attempting retry {self.retry_count + 1} of {max_retries}."
-            )
-
-            try:
-                # Remove the failed download from aria2 queue (but keep files)
-                options = {"force": True, "files": False, "clean": True}
-                remove_results = self.remove_download(download.gid, options)
-                logging.info(f"Removed download {download.gid}: {remove_results}")
-
-                # Stop monitoring the failed download
-                self.monitor_threads.pop(download.gid, None)
-                logging.info(f"Stopped monitoring download {download.gid=}")
-
-                # Re-add the same URI with original output name
-                new_download = self.add_download(self.download_url, download.name)
-                logging.info(f"Re-added download as new GID: {new_download.gid}")
-
-                # Wait before next status check
-                time.sleep(wait_seconds)
-
-                # Update download reference to new GID
-                download = self.api.get_download(new_download.gid)
-
-                if download.status == "active":
-                    logging.info(f"Download {download.gid} restarted successfully.")
-                    return True
-            except Exception as e:
-                logging.error(
-                    f"Error while retrying download {download.gid}: {e}", exc_info=1
-                )
-
-            self.retry_count += 1
-            time.sleep(wait_seconds)
-
-        logging.error(f"All retry attempts exhausted for download {download.gid}.")
-        return False
-
-    @log_fun_call
     def start_monitor_thread(self, gid):
         """
         Starts a new thread to monitor the download with the given GID.
@@ -239,7 +168,7 @@ class DownloadManager:
 
         This function continuously queries the status of the download and sends status updates.
         If the download is complete or removed, the function stops monitoring.
-        If the download fails with an error, the function attempts to retry the download automatically.
+        If the download fails with an error, the function logs the error.
         The function sleeps for a short period before the next status update to avoid excessive CPU usage.
         """
         while True:
@@ -255,7 +184,6 @@ class DownloadManager:
                 logging.warning(
                     f"Download failed - {gid=} {download.error_message}", exc_info=1
                 )
-                self.retry_download(download)
                 break
             self.send_status_update(download)
             time.sleep(1)
@@ -393,6 +321,7 @@ if __name__ == "__main__":
     )
 
     dwnld_mgr = DownloadManager(aria2)
+    print("Downloader is running...")
     msg = get_message()
 
     # Process the command received from the extension

@@ -15,7 +15,10 @@ ExecStart=/usr/bin/aria2c \
   --continue=true \
   --max-concurrent-downloads=10 \
   --max-connection-per-server=5 \
-  --rpc-save-upload-metadata=true
+  --rpc-save-upload-metadata=true \
+  --max-tries=20 \
+  --retry-wait=5 \
+  -D
 Restart=on-failure
 RestartSec=5s
 
