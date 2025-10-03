@@ -30,15 +30,18 @@ RapidPyFetch provides a clean interface between browser extensions and the power
 1. Clone the repository:
 
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/neeyatlotlikar/RapidPyFetch.git
     cd RapidPyFetch
     ```
 
 2. Create and activate virtual environment:
 
     ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
+    python3 -m venv venv
+    #or
+    uv venv venv
+
+    source venv/bin/activate
     ```
 
 3. Install dependencies:
@@ -64,7 +67,7 @@ Create a `.env` file in the project root:
 ARIA2_RPC_SECRET=your_secret_here
 RPC_LISTEN_PORT=6800
 ARIA2_RPC_HOSTNAME=http://localhost
-LOG_PATH=~/Downloads/downloader.log
+LOG_PATH=/path/to/downloader.log
 ```
 
 ### aria2c Daemon Setup
@@ -174,14 +177,10 @@ The helper processes JSON commands via stdin:
 }
 ```
 
-### Direct Execution
+### Make script executable
 
 ```bash
-# Make script executable
 chmod +x downloader.py
-
-# Run with command
-echo '{"command": "add", "url": "http://example.com/file.zip"}' | ./downloader.py
 ```
 
 ### Monitoring Downloads
@@ -220,7 +219,7 @@ tail -f ~/Downloads/downloader.log
 
 ### Log Locations
 
-- **Python helper**: `~/Downloads/downloader.log` (configurable)
+- **Python helper**: `/path/to/downloader.log` (configurable)
 - **aria2c daemon**: Specified in daemon start command
 
 ### Common Issues
