@@ -218,6 +218,7 @@ def process_command(mgr: DownloadManager, msg: dict):
                 return
 
             mgr.add_download(url, filename)
+            logging.info(f"Added download {url=}, {filename=}")
             send_message(
                 {"status": "success", "message": "Download added successfully"}
             )
@@ -228,6 +229,7 @@ def process_command(mgr: DownloadManager, msg: dict):
                 return
 
             mgr.pause_download(gid)
+            logging.info(f"Paused download {gid=}")
 
         case "resume":
             if not gid:
@@ -235,6 +237,7 @@ def process_command(mgr: DownloadManager, msg: dict):
                 return
 
             mgr.resume_download(gid)
+            logging.info(f"Resumed download {gid=}")
 
         case "remove":
             if not gid:
@@ -242,6 +245,7 @@ def process_command(mgr: DownloadManager, msg: dict):
                 return
 
             mgr.remove_download(gid)
+            logging.info(f"Removed download {gid=}")
 
         case "list":
             downloads = mgr.api.get_downloads()
@@ -273,7 +277,7 @@ if __name__ == "__main__":
     )
 
     dwnld_mgr = DownloadManager(aria2)
-    print("Downloader is running...")
+    logging.info("Downloader is running...")
     msg = get_message()
 
     # Process the command received from the extension
