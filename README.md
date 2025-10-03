@@ -192,7 +192,7 @@ Check aria2c logs directly:
 tail -f /path/to/aria2c.log
 
 # Check Python helper logs
-tail -f ~/Downloads/downloader.log
+tail -f /path/to/downloader.log
 ```
 
 ## Key Features
