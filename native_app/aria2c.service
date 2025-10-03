@@ -7,6 +7,8 @@ After=network.target
 Type=simple
 ExecStart=/usr/bin/aria2c \
   --enable-rpc \
+  --log=/path/to/aria2c.log \
+  --log-level=info \
   --rpc-listen-port=6800 \
   --rpc-secret=YOUR_SECRET_HERE \
   --rpc-allow-origin-all=false \

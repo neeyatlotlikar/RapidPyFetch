@@ -1,8 +1,6 @@
 #!/home/autumn/Documents/Projects/RapidPyFetch/.venv/bin/python3
 import logging
 import os
-import time
-from threading import Thread
 
 import aria2p
 import dotenv
@@ -70,7 +68,6 @@ class DownloadManager:
         It also updates the download URL mapping and returns the added download object.
         """
         download: aria2p.Download = self.api.add_uris([url], options={"out": filename})
-        self.start_monitor_thread(download.gid)
         self.download_url = url
         return download
 
@@ -134,76 +131,31 @@ class DownloadManager:
             logging.warning(f"Download Not found {gid=}", exc_info=True)
 
     @log_fun_call
-    def start_monitor_thread(self, gid):
+    def get_download_status(self, gid):
         """
-        Starts a new thread to monitor the download with the given GID.
+        Gets the current status of a download.
 
         Args:
-            gid (str): The GID of the download to monitor.
-
-        This function creates a new thread and starts it.
-        The new thread calls the `monitor_download` function to continuously monitor the
-        download status until it is complete or removed.
+            gid (str): The GID of the download to check.
 
         Returns:
-            None
+            dict: Download status information or None if not found.
         """
-        thread = Thread(
-            target=self.monitor_download,
-            name=f"monitor-{gid}",
-            args=(gid,),
-            daemon=True,
-        )
-        thread.start()
-        self.monitor_thread = thread
-        logging.info(f"Started monitoring {thread=}")
-
-    @log_fun_call
-    def monitor_download(self, gid):
-        """
-        Monitor the status of a download until it is complete or removed.
-
-        Args:
-        - gid (str): The GID of the download to monitor.
-
-        This function continuously queries the status of the download and sends status updates.
-        If the download is complete or removed, the function stops monitoring.
-        If the download fails with an error, the function logs the error.
-        The function sleeps for a short period before the next status update to avoid excessive CPU usage.
-        """
-        while True:
-            # Get the current download status (need to fetch repeatedly for updates)
-            download = self.api.get_download(gid)
-            if not download:
-                logging.warning(f"Download not found - {gid=}", exc_info=True)
-                break
-            # Stop monitoring if the download is complete
-            if download.is_complete:
-                break
-            if download.status == "error":
-                logging.warning(
-                    f"Download failed - {gid=} {download.error_message}", exc_info=1
-                )
-                break
-            self.send_status_update(download)
-            time.sleep(1)
-        # Final update at the end
-        self.send_status_update(download)
-
-    # log_fun_call decorator not required here
-    def send_status_update(self, download: aria2p.Download):
-        status = download.status
-        progress = download.progress_string()
-        speed = download.download_speed_string()
-        message = {
-            "status": status,
-            "gid": download.gid,
-            "progress": progress,
-            "speed": speed,
-            "file": download.name,
-        }
-        # Add notification logic here
-        logging.info(f"send_status_update | Update: {message}")
+        download = self.api.get_download(gid)
+        if download:
+            status_info = {
+                "gid": download.gid,
+                "status": download.status,
+                "progress": download.progress_string(),
+                "speed": download.download_speed_string(),
+                "file": download.name,
+                "error_message": getattr(download, "error_message", None),
+            }
+            logging.info(f"Status check for {gid}: {status_info}")
+            return status_info
+        else:
+            logging.warning(f"Download not found for status check {gid=}")
+            return None
 
 
 @log_fun_call
